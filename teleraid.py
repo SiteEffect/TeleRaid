@@ -11,9 +11,10 @@ from threading import Thread
 from gevent import monkey
 from gevent import wsgi, spawn
 from flask import Flask, request
-
 from telepot import Bot as TelegramBot
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
+
+from config import config
 
 monkey.patch_all()
 
@@ -38,8 +39,8 @@ class TeleRaid:
     def __init__(self, queue):
         self.__raids = {}
         self.__queue = queue
-        self.__bot_token = ''
-        self.__target_chat_id = ''
+        self.__bot_token = config['bot_token']
+        self.__chat_id = config['chat_id']
         self.__client = TelegramBot(self.__bot_token)
         spawn(self.__run())
 
@@ -103,11 +104,11 @@ Starting at 10 trainer or {} at latest.</i>
             keyboard_markup = InlineKeyboardMarkup(
                 inline_keyboard=inline_keyboard)
 
-            self.__location(self.__target_chat_id,
+            self.__location(self.__chat_id,
                             raid['latitude'],
                             raid['longitude'])
             self.__send(message,
-                        self.__target_chat_id,
+                        self.__chat_id,
                         parse_mode="HTML",
                         reply_markup=keyboard_markup)
 
@@ -172,7 +173,7 @@ try:
     t.daemon = True
     t.start()
 
-    server = wsgi.WSGIServer(('127.0.0.1', 4000), app)
+    server = wsgi.WSGIServer((config['host'], config['port']), app)
     server.serve_forever()
 except KeyboardInterrupt:
     pass
