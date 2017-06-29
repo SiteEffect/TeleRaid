@@ -7,8 +7,15 @@ TeleRaid focuses on receiving webhook data from RocketMap to display upcoming Ra
 ```
 git clone https://github.com/Arengo/TeleRaid.git
 cd TeleRaid
-pip install requirements.txt
+pip install -r requirements.txt
 ```
+
+## How to update?
+```
+git pull
+pip install -r requirements.txt --upgrade
+```
+Check for changes in the ``config.example.py`` file and adjust your ``config.py`` accordingly.
 
 ## How to use?
 1. Put your Telegram ``bot_id`` as well as the ``chat_id`` you want to send notifications to, into the ``config.example.py`` file by replacing the placeholders ``#Placeholder#``.
