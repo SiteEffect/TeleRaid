@@ -14,7 +14,7 @@ from telepot import Bot as TelegramBot
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 
 from config import config
-from utils import get_pokemon_name, get_move_name
+from utils import get_pokemon_name, get_move_name, stickers
 
 monkey.patch_all()
 
@@ -90,10 +90,10 @@ class TeleRaid:
             if (datetime.utcnow() > datetime.utcfromtimestamp(
                     self.__raids[r]['end'])):
                 del updated_raids[r]
-                if r in messages:
+                if r in self.__messages:
                     self.__delete_message(chat_id=self.__chat_id,
-                                          message_id=messages['gym_id'])
-                    del messages[r]
+                                          message_id=self.__messages['gym_id'])
+                    del self.__messages[r]
 
         self.__raids = updated_raids
         print "Raids updated."
@@ -150,6 +150,9 @@ Raid ends at <b>{}</b>.
             keyboard_markup = InlineKeyboardMarkup(
                 inline_keyboard=inline_keyboard)
 
+            self.__send_sticker(chat_id=self.__chat_id,
+                                sticker=stickers[raid['pokemon_id']])
+
             self.__send_location(chat_id=self.__chat_id,
                                  latitude=raid['latitude'],
                                  longitude=raid['longitude'])
@@ -171,7 +174,7 @@ Raid ends at <b>{}</b>.
             print "Exception during notification process: {}".format(repr(e))
             raise NotificationException("Failed while notifying.")
 
-    def __update_message(self, old_message):
+    def __update_poll(self, old_message):
         try:
             yes_count = old_message['yes']
             no_count = old_message['no']
@@ -190,7 +193,7 @@ Raid ends at <b>{}</b>.
                 reply_markup=keyboard_markup
             )
             message.update({
-                'gym_id': raid['gym_id'],
+                'gym_id': old_message['gym_id'],
                 'yes': yes_count,
                 'no': no_count
             })
@@ -218,6 +221,14 @@ Raid ends at <b>{}</b>.
         except Exception as e:
             print "Exception while sending location: {}".format(repr(e))
             raise SendingException("Failed while sending location.")
+
+    def __send_sticker(self, chat_id, sticker):
+        try:
+            return self.__client.sendSticker(chat_id=chat_id,
+                                             sticker=sticker)
+        except Exception as e:
+            print "Exception while sending sticker: {}".format(repr(e))
+            raise SendingException("Failed while sending sticker.")
 
     def __edit_message_reply_markup(self, inline_message_id, reply_markup):
         try:
