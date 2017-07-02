@@ -4,6 +4,7 @@
 import json
 import Queue
 
+from time import sleep
 from datetime import datetime, timedelta
 from copy import deepcopy
 from threading import Thread
@@ -14,7 +15,8 @@ from telepot import Bot as TelegramBot
 from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 
 from config import config
-from utils import get_pokemon_name, get_move_name, stickers
+from utils import get_pokemon_name, get_move_name
+from static.stickers import stickers
 
 monkey.patch_all()
 
@@ -43,6 +45,10 @@ class DeleteException(Exception):
     pass
 
 
+class UpdateMessageException(Exception):
+    pass
+
+
 class TeleRaid:
     def __init__(self, queue):
         self.__bot_token = config['bot_token']
@@ -60,6 +66,9 @@ class TeleRaid:
 
     def __run(self):
         print "TeleRaid is running..."
+        t1 = Thread(target=self.__update_messages, args=())
+        t1.daemon = True
+        t1.start()
         while True:
             try:
                 data_json = self.__queue.get(block=True)
@@ -90,10 +99,10 @@ class TeleRaid:
             if (datetime.utcnow() > datetime.utcfromtimestamp(
                     self.__raids[r]['end'])):
                 del updated_raids[r]
-                if r in self.__messages:
+                if r in messages:
                     self.__delete_message(chat_id=self.__chat_id,
-                                          message_id=self.__messages['gym_id'])
-                    del self.__messages[r]
+                                          message_id=messages['gym_id'])
+                    del messages[r]
 
         self.__raids = updated_raids
         print "Raids updated."
@@ -153,6 +162,7 @@ Raid ends at <b>{}</b>.
             self.__send_sticker(chat_id=self.__chat_id,
                                 sticker=stickers[raid['pokemon_id']])
 
+
             self.__send_location(chat_id=self.__chat_id,
                                  latitude=raid['latitude'],
                                  longitude=raid['longitude'])
@@ -162,45 +172,82 @@ Raid ends at <b>{}</b>.
                                           chat_id=self.__chat_id,
                                           parse_mode="HTML",
                                           reply_markup=keyboard_markup)
-            message.update({
+            self.__messages[message['message_id']] = {
                 'gym_id': raid['gym_id'],
-                'yes': 0,
-                'no': 0
-            })
-            self.__messages[message['gym_id']] = message
+                'text': message['text'],
+                'poll': {
+                    'yes': 0,
+                    'no': 0,
+                    'users': {}
+                }
+            }
             raid['notified_battle'] = True
-
         except Exception as e:
             print "Exception during notification process: {}".format(repr(e))
             raise NotificationException("Failed while notifying.")
 
-    def __update_poll(self, old_message):
-        try:
-            yes_count = old_message['yes']
-            no_count = old_message['no']
-            inline_keyboard = [[
-                InlineKeyboardButton(text=("\xF0\x9F\x91\x8D Yes ({})"
-                                           .format(yes_count)),
-                                     callback_data='y'),
-                InlineKeyboardButton(text=("\xF0\x9F\x91\x8E No ({})"
-                                           .format(no_count)),
-                                     callback_data='n')
-            ]]
-            keyboard_markup = InlineKeyboardMarkup(
-                inline_keyboard=inline_keyboard)
-            message = self.__edit_message_reply_markup(
-                inline_message_id=old_message['messsage_id'],
-                reply_markup=keyboard_markup
-            )
-            message.update({
-                'gym_id': old_message['gym_id'],
-                'yes': yes_count,
-                'no': no_count
-            })
-            self.__messages[message['gym_id']] = message
-        except Exception as e:
-            print "Exception during message update process: {}".format(repr(e))
-            raise UpdateException("Failed while updating message.")
+    def __update_messages(self):
+        offset=None
+        while True:
+            try:
+                updates = self.__client.getUpdates(offset=offset)
+                updated_messages = []
+                for u in updates:
+                    callback_query = u.get('callback_query', {})
+                    data = callback_query.get('data', None)
+                    message = callback_query.get('message', {})
+                    message_id = message.get('message_id', 0)
+                    if message_id:
+                        updated_messages.append(message_id)
+                        if not message_id in self.__messages:
+                            self.__messages[message_id] = {
+                                'gym_id': '',
+                                'text': message['text'],
+                                'poll': {
+                                    'yes': 0,
+                                    'no': 0,
+                                    'users': {}
+                                }
+                            }
+
+                        self.__messages[message_id]['poll']['users'].update({
+                            callback_query['from']['id']: data
+                        })
+
+                    update_id = u.get('update_id', None)
+                    if update_id and update_id >= offset:
+                        offset = update_id + 1
+
+                for message_id in updated_messages:
+                    poll = self.__messages[message_id]['poll']
+                    poll['yes'] = 0
+                    poll['no'] = 0
+
+                    for user in poll['users']:
+                        if poll['users'][user] == 'y':
+                            poll['yes'] += 1
+                        elif poll['users'][user] == 'n':
+                            poll['no'] += 1
+
+                    if poll['yes'] or poll['no']:
+                        inline_keyboard = [[
+                            InlineKeyboardButton(text=("\xF0\x9F\x91\x8D Yes ({})"
+                                                       .format(poll['yes'])),
+                                                 callback_data='y'),
+                            InlineKeyboardButton(text=("\xF0\x9F\x91\x8E No ({})"
+                                                       .format(poll['no'])),
+                                                 callback_data='n')
+                        ]]
+                        keyboard_markup = InlineKeyboardMarkup(
+                            inline_keyboard=inline_keyboard)
+                        message = self.__edit_message_reply_markup(
+                            msg_identifier=(self.__chat_id, message_id),
+                            reply_markup=keyboard_markup
+                        )
+            except Exception as e:
+                print "Exception while updating messages: {}".format(repr(e))
+                #raise UpdateMessageException("Failed while updating messages.")
+            sleep(1)
 
     def __send_message(self, text, chat_id,
                        parse_mode=None, reply_markup=None):
@@ -230,10 +277,10 @@ Raid ends at <b>{}</b>.
             print "Exception while sending sticker: {}".format(repr(e))
             raise SendingException("Failed while sending sticker.")
 
-    def __edit_message_reply_markup(self, inline_message_id, reply_markup):
+    def __edit_message_reply_markup(self, msg_identifier, reply_markup):
         try:
             return self.__client.editMessageReplyMarkup(
-                inline_message_id=inline_message_id,
+                msg_identifier=msg_identifier,
                 reply_markup=reply_markup
             )
         except Exception as e:
