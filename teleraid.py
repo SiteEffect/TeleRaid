@@ -45,10 +45,6 @@ class DeleteException(Exception):
     pass
 
 
-class UpdateMessageException(Exception):
-    pass
-
-
 class TeleRaid:
     def __init__(self, queue):
         self.__bot_token = config['bot_token']
@@ -99,10 +95,11 @@ class TeleRaid:
             if (datetime.utcnow() > datetime.utcfromtimestamp(
                     self.__raids[r]['end'])):
                 del updated_raids[r]
-                if r in messages:
-                    self.__delete_message(chat_id=self.__chat_id,
-                                          message_id=messages['gym_id'])
-                    del messages[r]
+                for m in self.__messages:
+                    if r == self.__messages[m].get('gym_id', ''):
+                        self.__delete_message(chat_id=self.__chat_id,
+                                              message_id=m)
+                        del self.__messages[m]
 
         self.__raids = updated_raids
         print "Raids updated."
@@ -162,7 +159,6 @@ Raid ends at <b>{}</b>.
             self.__send_sticker(chat_id=self.__chat_id,
                                 sticker=stickers[raid['pokemon_id']])
 
-
             self.__send_location(chat_id=self.__chat_id,
                                  latitude=raid['latitude'],
                                  longitude=raid['longitude'])
@@ -187,7 +183,7 @@ Raid ends at <b>{}</b>.
             raise NotificationException("Failed while notifying.")
 
     def __update_messages(self):
-        offset=None
+        offset = None
         while True:
             try:
                 updates = self.__client.getUpdates(offset=offset)
@@ -199,7 +195,7 @@ Raid ends at <b>{}</b>.
                     message_id = message.get('message_id', 0)
                     if message_id:
                         updated_messages.append(message_id)
-                        if not message_id in self.__messages:
+                        if message_id not in self.__messages:
                             self.__messages[message_id] = {
                                 'gym_id': '',
                                 'text': message['text'],
@@ -231,12 +227,14 @@ Raid ends at <b>{}</b>.
 
                     if poll['yes'] or poll['no']:
                         inline_keyboard = [[
-                            InlineKeyboardButton(text=("\xF0\x9F\x91\x8D Yes ({})"
-                                                       .format(poll['yes'])),
-                                                 callback_data='y'),
-                            InlineKeyboardButton(text=("\xF0\x9F\x91\x8E No ({})"
-                                                       .format(poll['no'])),
-                                                 callback_data='n')
+                            InlineKeyboardButton(
+                                text=("\xF0\x9F\x91\x8D Yes ({})"
+                                      .format(poll['yes'])),
+                                callback_data='y'),
+                            InlineKeyboardButton(
+                                text=("\xF0\x9F\x91\x8E No ({})"
+                                      .format(poll['no'])),
+                                callback_data='n')
                         ]]
                         keyboard_markup = InlineKeyboardMarkup(
                             inline_keyboard=inline_keyboard)
@@ -246,8 +244,9 @@ Raid ends at <b>{}</b>.
                         )
             except Exception as e:
                 print "Exception while updating messages: {}".format(repr(e))
-                #raise UpdateMessageException("Failed while updating messages.")
-            sleep(1)
+                pass
+            finally:
+                sleep(1)
 
     def __send_message(self, text, chat_id,
                        parse_mode=None, reply_markup=None):
