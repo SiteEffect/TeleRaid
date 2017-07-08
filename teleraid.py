@@ -75,7 +75,8 @@ class TeleRaid:
                     self.__notify(raid)
             except Exception as e:
                 print "Exception during regular runtime: {}".format(repr(e))
-                raise RuntimeException("Failed during runtime.")
+                pass
+
             self.__queue.task_done()
 
     def __process_request(self, data_json):
@@ -180,7 +181,7 @@ Raid ends at <b>{}</b>.
             raid['notified_battle'] = True
         except Exception as e:
             print "Exception during notification process: {}".format(repr(e))
-            raise NotificationException("Failed while notifying.")
+            pass
 
     def __update_messages(self):
         offset = None
@@ -257,7 +258,7 @@ Raid ends at <b>{}</b>.
                                              reply_markup=reply_markup)
         except Exception as e:
             print "Exception while sending message: {}".format(repr(e))
-            raise SendingException("Failed while sending message.")
+            pass
 
     def __send_location(self, chat_id, latitude, longitude):
         try:
@@ -266,7 +267,7 @@ Raid ends at <b>{}</b>.
                                               longitude=longitude)
         except Exception as e:
             print "Exception while sending location: {}".format(repr(e))
-            raise SendingException("Failed while sending location.")
+            pass
 
     def __send_sticker(self, chat_id, sticker):
         try:
@@ -274,7 +275,7 @@ Raid ends at <b>{}</b>.
                                              sticker=sticker)
         except Exception as e:
             print "Exception while sending sticker: {}".format(repr(e))
-            raise SendingException("Failed while sending sticker.")
+            pass
 
     def __edit_message_reply_markup(self, msg_identifier, reply_markup):
         try:
@@ -284,14 +285,14 @@ Raid ends at <b>{}</b>.
             )
         except Exception as e:
             print "Exception while editing keyboard markup: {}".format(repr(e))
-            raise UpdateException("Failed while updating keyboard markup.")
+            pass
 
     def __delete_message(self, msg_identifier):
         try:
             return self.__client.deleteMessage(msg_identifier=msg_identifier)
         except Exception as e:
             print "Exception while deleting message: {}".format(repr(e))
-            raise DeleteException("Failed while deleting message.")
+            pass
 
 
 app = Flask(__name__)
@@ -306,7 +307,8 @@ def accept_webhook():
     except Exception as e:
         print ("Encountered error while receiving webhook ({}: {})"
                .format(type(e).__name__, e))
-        raise WebhookException("Exception while receiving webhook.")
+        pass
+
     return "OK"  # request ok
 
 
