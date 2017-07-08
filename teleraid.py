@@ -114,7 +114,7 @@ class TeleRaid:
                 continue
 
             if (datetime.utcnow() > datetime.utcfromtimestamp(
-                    self.__raids[r]['battle'])):
+                    self.__raids[r]['start'])):
                 if not self.__raids[r]['notified_battle']:
                     print ("Notifying about raid with Pokemon-ID {}."
                            .format(self.__raids[r]['pokemon_id']))
