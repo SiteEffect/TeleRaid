@@ -97,8 +97,8 @@ class TeleRaid:
                 del updated_raids[r]
                 for m in self.__messages:
                     if r == self.__messages[m].get('gym_id', ''):
-                        self.__delete_message(chat_id=self.__chat_id,
-                                              message_id=m)
+                        self.__delete_message(
+                            msg_identifier=(self.__chat_id, m))
                         del self.__messages[m]
 
         self.__raids = updated_raids
@@ -286,10 +286,9 @@ Raid ends at <b>{}</b>.
             print "Exception while editing keyboard markup: {}".format(repr(e))
             raise UpdateException("Failed while updating keyboard markup.")
 
-    def __delete_message(self, chat_id, message_id):
+    def __delete_message(self, msg_identifier):
         try:
-            return self.__client.deleteMessage(chat_id=chat_id,
-                                               message_id=message_id)
+            return self.__client.deleteMessage(msg_identifier=msg_identifier)
         except Exception as e:
             print "Exception while deleting message: {}".format(repr(e))
             raise DeleteException("Failed while deleting message.")
