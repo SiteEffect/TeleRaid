@@ -11,7 +11,7 @@ from gevent import wsgi
 from flask import Flask, request
 
 # Custom files and packages
-from config import config
+from config.config import config
 from teleraid.teleraid import TeleRaid
 
 

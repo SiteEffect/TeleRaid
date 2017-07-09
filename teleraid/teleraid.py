@@ -13,7 +13,7 @@ from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
 from telepot.exception import TelegramError
 
 # Custom files and packages
-from config import config
+from config.config import config
 from static.stickers import stickers
 from .utils import get_pokemon_name, get_move_name
 
