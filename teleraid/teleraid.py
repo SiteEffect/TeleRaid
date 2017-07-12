@@ -5,7 +5,6 @@ import logging
 
 from time import sleep
 from datetime import datetime, timedelta
-from copy import deepcopy
 from threading import Thread
 from gevent import spawn
 from telepot import Bot as TelegramBot
@@ -94,7 +93,7 @@ class TeleRaid:
             self.__add_raid(data_json['message'])
 
     def __add_raid(self, raid):
-        if raid['gym_id'] not in self.__raids:
+        if raid['pokemon_id'] and raid['gym_id'] not in self.__raids:
             raid['notified_battle'] = False
             self.__raids[raid['gym_id']] = raid
             log.info("Raid added.")
@@ -155,7 +154,7 @@ class TeleRaid:
                     raids_to_notify.append(self.__raids[r])
                 else:
                     log.debug("Already notified about raid of Pokemon-ID {}."
-                             .format(self.__raids[r]['pokemon_id']))
+                              .format(self.__raids[r]['pokemon_id']))
 
         log.debug("Raids checked.")
         return raids_to_notify
