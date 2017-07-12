@@ -9,7 +9,7 @@ config = {
     'chat_id': "#TELEGRAM_CHAT_ID#",  # Chat-ID of the Telegram channel.
     'host': "127.0.0.1",  # IP of your RocketMap webhook.
     'port': 4001,  # Port of your RocketMap webhook.
-
+    'locale': 'en',  # Language of Pokemon names and moves.
     'notify_levels': [1, 2, 3, 4, 5],  # List of raid levels to notify about
     # List of Raid Pokemon to notify about
     'notify_pokemon': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
