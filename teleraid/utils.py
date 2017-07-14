@@ -6,6 +6,30 @@ import json
 from config.config import config
 
 
+def telepot_shiny(message):
+    text = message.get('text', '')
+    entities = message.get('entities', [])
+
+    shinies = {
+        'bold': ('<b>', '</b>'),
+        'italic': ('<i>', '</i>')
+    }
+
+    add_off = 0
+    for e in entities:
+        if e['type'] in shinies:
+            text = (text[:add_off + e['offset']] +
+                    shinies[e['type']][0] +
+                    text[add_off+e['offset']:])
+            add_off += len(shinies[e['type']][0])
+
+            text = (text[:add_off+e['offset']+e['length']] +
+                    shinies[e['type']][1] +
+                    text[add_off+e['offset']+e['length']:])
+            add_off += len(shinies[e['type']][1])
+    return text
+
+
 def i18n(word):
     locale = config.get('locale', 'en')
     if locale == "en":

@@ -14,7 +14,7 @@ from telepot.exception import TelegramError
 # Custom files and packages
 from config.config import config
 from static.stickers import stickers
-from .utils import get_pokemon_name, get_move_name
+from .utils import telepot_shiny, get_pokemon_name, get_move_name
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +49,7 @@ class TeleRaid:
         self.__chat_id = config['chat_id']
         self.__client = TelegramBot(self.__bot_token)
 
+        self.__timezone = config.get('timezone', 0)
         self.__notify_levels = config['notify_levels']
         self.__notify_pokemon = config['notify_pokemon']
 
@@ -162,10 +163,9 @@ class TeleRaid:
     def __notify(self, raid):
         try:
             # Setup the message
-            raid_end = (datetime.utcfromtimestamp(raid['end']) +
-                        timedelta(hours=2)).strftime("%H:%M")
-            raid_fight = (datetime.utcfromtimestamp(raid['start']) +
-                          timedelta(hours=2, minutes=30)).strftime("%H:%M")
+            raid_end = ((datetime.utcfromtimestamp(raid['end']) +
+                         timedelta(hours=self.__timezone))
+                        .strftime("%H:%M"))
             raid_pokemon = get_pokemon_name(raid['pokemon_id'])
             raid_move_1 = get_move_name(raid['move_1'])
             raid_move_2 = get_move_name(raid['move_2'])
@@ -173,13 +173,10 @@ class TeleRaid:
                        '''
 <b>Raid - Level {} - {}</b>
 {} / {}
-Raid ends at <b>{}</b>.
-
-<i>Waiting for trainer.</i>
-<i>Starting at 10 trainer or {} at latest.</i>'''
+Raid ends at <b>{}</b>.'''
                        .format(raid['level'], raid_pokemon,
                                raid_move_1, raid_move_2,
-                               raid_end, raid_fight))
+                               raid_end))
             inline_keyboard = [[
                 InlineKeyboardButton(text="\xF0\x9F\x91\x8D Yes",
                                      callback_data='y'),
@@ -200,7 +197,6 @@ Raid ends at <b>{}</b>.
                 longitude=raid['longitude']
             )
 
-            # Keyboard response is not working, yet.
             message = self.__send_message(text=text,
                                           chat_id=self.__chat_id,
                                           parse_mode="HTML",
@@ -243,6 +239,7 @@ Raid ends at <b>{}</b>.
                             self.__messages[message_id] = {
                                 'gym_id': '',
                                 'text': message['text'],
+                                'entities': message['entities'],
                                 'poll': {
                                     'yes': 0,
                                     'no': 0,
@@ -251,7 +248,11 @@ Raid ends at <b>{}</b>.
                             }
 
                         self.__messages[message_id]['poll']['users'].update({
-                            callback_query['from']['id']: data
+                            callback_query['from']['id']: {
+                                'id': callback_query['from']['id'],
+                                'data': data,
+                                'username': callback_query['from']['username']
+                            }
                         })
 
                     update_id = u.get('update_id', None)
@@ -264,12 +265,31 @@ Raid ends at <b>{}</b>.
                     poll['no'] = 0
 
                     for user in poll['users']:
-                        if poll['users'][user] == 'y':
+                        if poll['users'][user]['data'] == 'y':
                             poll['yes'] += 1
-                        elif poll['users'][user] == 'n':
+                        elif poll['users'][user]['data'] == 'n':
                             poll['no'] += 1
 
                     if poll['yes'] or poll['no']:
+                        text = self.__messages[message_id]['text']
+                        if 'entities' in self.__messages[message_id]:
+                            text = telepot_shiny(self.__messages[message_id])
+
+                        yes_string = ('<b>Yes</b>\n' + '\n'.join(
+                                      [poll['users'][user]['username']
+                                       for user in poll['users']
+                                       if poll['users'][user]['data'] == 'y']))
+                        no_string = ('<b>No</b>\n' + '\n'.join(
+                                     [poll['users'][user]['username']
+                                      for user in poll['users']
+                                      if poll['users'][user]['data'] == 'n']))
+                        text = (text.split('\n\n<b>Yes</b>')[0] + (
+                                '''
+
+{}
+
+{}'''
+                                .format(yes_string, no_string)))
                         inline_keyboard = [[
                             InlineKeyboardButton(
                                 text=("\xF0\x9F\x91\x8D Yes ({})"
@@ -282,10 +302,16 @@ Raid ends at <b>{}</b>.
                         ]]
                         keyboard_markup = InlineKeyboardMarkup(
                             inline_keyboard=inline_keyboard)
-                        message = self.__edit_message_reply_markup(
+                        message = self.__edit_message(
                             msg_identifier=(self.__chat_id, message_id),
+                            text=text,
+                            parse_mode='HTML',
                             reply_markup=keyboard_markup
                         )
+                        '''message = self.__edit_message_reply_markup(
+                            msg_identifier=(self.__chat_id, message_id),
+                            reply_markup=keyboard_markup
+                        )'''
 
                 retry_time = 1
             except Exception as e:
@@ -324,6 +350,23 @@ Raid ends at <b>{}</b>.
                                              sticker=sticker)
         except Exception as e:
             log.exception("Exception while sending sticker: {}"
+                          .format(repr(e)))
+            pass
+
+    def __edit_message(self, msg_identifier, text,
+                       parse_mode=None, reply_markup=None):
+        try:
+            return self.__client.editMessageText(
+                msg_identifier=msg_identifier,
+                text=text,
+                parse_mode=parse_mode,
+                reply_markup=reply_markup
+            )
+        except TelegramError:
+            log.warning("TelegramError - No change in message after updating.")
+            pass
+        except Exception as e:
+            log.exception("Exception while editing message: {}"
                           .format(repr(e)))
             pass
 
