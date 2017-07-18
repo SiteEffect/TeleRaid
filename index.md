@@ -1,6 +1,3 @@
-# TeleRaid
-*a webhook-based notifier for Pokemon GO raids*
-
 ## What is this?
 TeleRaid focuses on receiving webhook data from various services to display upcoming Raids in a Telegram Channel to notify its Users and let them vote for attendance.
 
