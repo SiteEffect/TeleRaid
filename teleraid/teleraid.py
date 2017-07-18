@@ -19,30 +19,6 @@ from .utils import telepot_shiny, get_pokemon_name, get_move_name
 log = logging.getLogger(__name__)
 
 
-class WebhookException(Exception):
-    pass
-
-
-class RuntimeException(Exception):
-    pass
-
-
-class NotificationException(Exception):
-    pass
-
-
-class SendingException(Exception):
-    pass
-
-
-class UpdateException(Exception):
-    pass
-
-
-class DeleteException(Exception):
-    pass
-
-
 class TeleRaid:
     def __init__(self, queue):
         self.__bot_token = config['bot_token']
@@ -318,7 +294,6 @@ Raid ends at <b>{}</b>.'''
                 log.exception("Exception while updating messages: {}"
                               .format(repr(e)))
                 retry_time *= 2
-                pass
             finally:
                 sleep(retry_time)
 
@@ -332,7 +307,6 @@ Raid ends at <b>{}</b>.'''
         except Exception as e:
             log.exception("Exception while sending message: {}"
                           .format(repr(e)))
-            pass
 
     def __send_location(self, chat_id, latitude, longitude):
         try:
@@ -342,7 +316,6 @@ Raid ends at <b>{}</b>.'''
         except Exception as e:
             log.exception("Exception while sending location: {}"
                           .format(repr(e)))
-            pass
 
     def __send_sticker(self, chat_id, sticker):
         try:
@@ -351,7 +324,6 @@ Raid ends at <b>{}</b>.'''
         except Exception as e:
             log.exception("Exception while sending sticker: {}"
                           .format(repr(e)))
-            pass
 
     def __edit_message(self, msg_identifier, text,
                        parse_mode=None, reply_markup=None):
@@ -364,11 +336,9 @@ Raid ends at <b>{}</b>.'''
             )
         except TelegramError:
             log.warning("TelegramError - No change in message after updating.")
-            pass
         except Exception as e:
             log.exception("Exception while editing message: {}"
                           .format(repr(e)))
-            pass
 
     def __edit_message_reply_markup(self, msg_identifier, reply_markup):
         try:
@@ -378,11 +348,9 @@ Raid ends at <b>{}</b>.'''
             )
         except TelegramError:
             log.warning("TelegramError - No change in message after updating.")
-            pass
         except Exception as e:
             log.exception("Exception while editing keyboard markup: {}"
                           .format(repr(e)))
-            pass
 
     def __delete_message(self, msg_identifier):
         try:
@@ -390,4 +358,3 @@ Raid ends at <b>{}</b>.'''
         except Exception as e:
             log.exception("Exception while deleting message: {}"
                           .format(repr(e)))
-            pass
